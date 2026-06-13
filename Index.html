@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUNGEON OF DOOM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#000;
+  color:#f2e8c9;
+  font-family:'Georgia',serif;
+  overflow:hidden;
+  width:100vw; height:100vh;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ── INTRO CINEMATIC ── */
+#intro {
+  position:fixed; inset:0; background:#000;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  z-index:100;
+}
+.intro-word {
+  font-size:clamp(3rem,10vw,7rem);
+  font-family:'Georgia',serif;
+  font-weight:bold;
+  color:#8B0000;
+  text-shadow:0 0 40px #ff0000, 0 0 80px #8B0000;
+  opacity:0;
+  transform:scale(0.6);
+  position:absolute;
+  transition: none;
+  letter-spacing:0.08em;
+}
+
+/* ── NAME SCREEN ── */
+#name-screen {
+  position:fixed; inset:0; background:#000;
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center;
+  z-index:99;
+  gap:24px;
+}
+#name-screen h2 {
+  font-size:clamp(1.2rem,4vw,2rem);
+  color:#C9A227;
+  text-align:center;
+  letter-spacing:0.1em;
+  text-shadow:0 0 20px rgba(201,162,39,0.5);
+}
+#name-screen p {
+  color:#a09070;
+  font-style:italic;
+  font-size:1rem;
+  text-align:center;
+  max-width:340px;
+  line-height:1.6;
+}
+#name-input {
+  background:transparent;
+  border:none;
+  border-bottom:2px solid #C9A227;
+  color:#f2e8c9;
+  font-family:'Georgia',serif;
+  font-size:1.4rem;
+  text-align:center;
+  padding:8px 16px;
+  outline:none;
+  width:260px;
+  caret-color:#C9A227;
+}
+#name-input::placeholder { color:#555; }
+#name-submit {
+  background:linear-gradient(135deg,#8B0000,#5c0000);
+  border:1px solid #ff4500;
+  color:#f2e8c9;
+  font-family:'Georgia',serif;
+  font-size:0.9rem;
+  letter-spacing:3px;
+  padding:12px 32px;
+  cursor:pointer;
+  text-transform:uppercase;
+  transition:all 0.2s;
+}
+#name-submit:hover {
+  background:linear-gradient(135deg,#a00000,#8B0000);
+  box-shadow:0 0 20px rgba(255,69,0,0.4);
+}
+.skull-deco { font-size:1.8rem; letter-spacing:12px; opacity:0.5; }
+
+/* ── GAME CANVAS ── */
+#game-wrap {
+  display:none;
+  position:relative;
+  width:100vw; height:100vh;
+}
+#rayCanvas {
+  display:block;
+  width:100%; height:100%;
+  image-rendering:pixelated;
+}
+
+/* ── HUD ── */
+#hud {
+  position:absolute; top:0; left:0; right:0;
+  padding:12px 20px;
+  display:flex; justify-content:space-between; align-items:center;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.7),transparent);
+  pointer-events:none;
+}
+#hud-name {
+  font-size:0.8rem;
+  color:#C9A227;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+#hp-display { display:flex; gap:6px; }
+.heart { font-size:1.2rem; transition:all 0.3s; }
+.heart.empty { opacity:0.2; filter:grayscale(1); }
+
+#minimap {
+  position:absolute; bottom:16px; right:16px;
+  opacity:0.55;
+}
+
+/* ── CONTROLS HINT ── */
+#controls-hint {
+  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+  display:flex; gap:8px; align-items:center;
+  pointer-events:none;
+}
+.key-hint {
+  background:rgba(0,0,0,0.6);
+  border:1px solid rgba(201,162,39,0.4);
+  color:#C9A227;
+  font-size:0.7rem;
+  padding:4px 8px;
+  border-radius:3px;
+  letter-spacing:1px;
+}
+
+/* ── QUESTION PANEL ── */
+#question-panel {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,0.88);
+  display:none;
+  flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:32px 20px;
+  gap:20px;
+}
+#q-chamber {
+  font-size:0.7rem;
+  letter-spacing:4px;
+  color:#C9A227;
+  text-transform:uppercase;
+  opacity:0.7;
+}
+#q-title {
+  font-size:clamp(1.4rem,4vw,2rem);
+  color:#C9A227;
+  text-align:center;
+  text-shadow:0 0 20px rgba(201,162,39,0.4);
+}
+#q-story {
+  font-style:italic;
+  color:#c0a080;
+  text-align:center;
+  max-width:480px;
+  line-height:1.7;
+  font-size:0.95rem;
+}
+#q-question {
+  background:rgba(0,0,0,0.5);
+  border:1px solid rgba(201,162,39,0.35);
+  padding:14px 24px;
+  font-size:1.05rem;
+  color:#f2e8c9;
+  text-align:center;
+  max-width:480px;
+  line-height:1.5;
+  border-radius:3px;
+}
+#q-choices {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  max-width:500px;
+  width:100%;
+}
+.q-btn {
+  background:linear-gradient(160deg,#1a1208,#0d0a04);
+  border:1px solid #C9A227;
+  color:#f2e8c9;
+  font-family:'Georgia',serif;
+  font-size:0.95rem;
+  padding:14px 10px;
+  cursor:pointer;
+  transition:all 0.2s;
+  border-radius:3px;
+  line-height:1.4;
+}
+.q-btn:hover { background:linear-gradient(160deg,#2a1f0a,#1a1208); border-color:#ff4500; }
+.q-btn:disabled { cursor:not-allowed; opacity:0.5; }
+.q-btn.correct { border-color:#4caf50; background:linear-gradient(160deg,#0d200d,#081408); }
+.q-btn.wrong   { border-color:#8B0000; background:linear-gradient(160deg,#200d0d,#100808); }
+
+#q-result {
+  font-size:1rem;
+  text-align:center;
+  max-width:480px;
+  line-height:1.6;
+  min-height:50px;
+  padding:8px;
+}
+#q-result.bad  { color:#ff4500; }
+#q-result.good { color:#81c784; }
+
+#q-continue {
+  background:linear-gradient(135deg,#8B0000,#5c0000);
+  border:1px solid #ff4500;
+  color:#f2e8c9;
+  font-family:'Georgia',serif;
+  font-size:0.8rem;
+  letter-spacing:2px;
+  padding:11px 28px;
+  cursor:pointer;
+  display:none;
+  text-transform:uppercase;
+  transition:all 0.2s;
+  border-radius:3px;
+}
+#q-continue:hover { background:linear-gradient(135deg,#a00000,#8B0000); box-shadow:0 0 16px rgba(255,69,0,0.3); }
+
+/* ── DEATH / WIN ── */
+#end-screen {
+  position:fixed; inset:0;
+  background:#000;
+  display:none;
+  flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:20px; z-index:200;
+  padding:32px;
+}
+#end-title {
+  font-size:clamp(2rem,8vw,5rem);
+  font-weight:bold;
+  text-align:center;
+  text-shadow:0 0 40px currentColor;
+}
+#end-title.death { color:#8B0000; animation:deathPulse 1.5s infinite alternate; }
+#end-title.win   { color:#C9A227; animation:winPulse  1.5s infinite alternate; }
+@keyframes deathPulse { from{opacity:0.7;} to{opacity:1; text-shadow:0 0 60px #ff0000;} }
+@keyframes winPulse   { from{opacity:0.8;} to{opacity:1; text-shadow:0 0 60px #C9A227;} }
+#end-msg {
+  font-style:italic; color:#a09070;
+  text-align:center; max-width:440px;
+  line-height:1.7; font-size:1rem;
+}
+#end-restart {
+  background:transparent;
+  border:1px solid #C9A227;
+  color:#C9A227;
+  font-family:'Georgia',serif;
+  font-size:0.8rem;
+  letter-spacing:3px;
+  padding:12px 28px;
+  cursor:pointer;
+  text-transform:uppercase;
+  transition:all 0.2s;
+}
+#end-restart:hover { background:rgba(201,162,39,0.1); }
+
+/* ── VIGNETTE ── */
+#vignette {
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%);
+  pointer-events:none;
+}
+
+/* ── TORCH FLICKER OVERLAY ── */
+#torch-flicker {
+  position:absolute; inset:0;
+  background:rgba(255,100,0,0.0);
+  pointer-events:none;
+  animation:torchFlicker 0.12s infinite alternate;
+}
+@keyframes torchFlicker {
+  0%  { background:rgba(255,100,0,0.00); }
+  100%{ background:rgba(255,100,0,0.03); }
+}
+
+/* ── DAMAGE FLASH ── */
+#dmg-flash {
+  position:absolute; inset:0;
+  background:rgba(139,0,0,0);
+  pointer-events:none;
+  transition:background 0.1s;
+}
+#dmg-flash.hit { background:rgba(139,0,0,0.45); }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro">
+  <div class="intro-word" id="iw1">WILL</div>
+  <div class="intro-word" id="iw2">YOU</div>
+  <div class="intro-word" id="iw3">SURVIVE</div>
+  <div class="intro-word" id="iw4">THIS?</div>
+</div>
+
+<!-- NAME SCREEN -->
+<div id="name-screen">
+  <div class="skull-deco">💀 ⚔️ 💀</div>
+  <h2>STATE YOUR NAME,<br>PRISONER</h2>
+  <p>The dungeon must know who it is about to destroy.</p>
+  <input id="name-input" type="text" maxlength="18" placeholder="Your name..." autocomplete="off" spellcheck="false"/>
+  <button id="name-submit">ENTER THE DUNGEON</button>
+  <p style="font-size:0.75rem;color:#444">WASD or Arrow Keys to move &nbsp;|&nbsp; Desktop only</p>
+</div>
+
+<!-- GAME -->
+<div id="game-wrap">
+  <canvas id="rayCanvas"></canvas>
+  <div id="vignette"></div>
+  <div id="torch-flicker"></div>
+  <div id="dmg-flash"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-name"></div>
+    <div id="hp-display"></div>
+  </div>
+
+  <!-- minimap -->
+  <canvas id="minimap" width="100" height="100"></canvas>
+
+  <!-- controls hint -->
+  <div id="controls-hint">
+    <span class="key-hint">W / ↑ MOVE</span>
+    <span class="key-hint">A D / ← → TURN</span>
+    <span class="key-hint">S / ↓ BACK</span>
+  </div>
+
+  <!-- Question panel -->
+  <div id="question-panel">
+    <div id="q-chamber"></div>
+    <div id="q-title"></div>
+    <div id="q-story"></div>
+    <div id="q-question"></div>
+    <div id="q-choices"></div>
+    <div id="q-result"></div>
+    <button id="q-continue">CONTINUE ▶</button>
+  </div>
+</div>
+
+<!-- END SCREEN -->
+<div id="end-screen">
+  <div id="end-title"></div>
+  <div id="end-msg"></div>
+  <button id="end-restart">PLAY AGAIN (YOU WON'T MAKE IT)</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  QUESTIONS (rage bait: right = punished)
+// ══════════════════════════════════════════
+const QUESTIONS = [
+  {
+    chamber:"CHAMBER I — THE MATH WARD",
+    title:"Developer Failed Math",
+    story:"A carved stone tablet glows on the wall. The dungeon breathes. It smells like calculator.",
+    question:"What is 2 + 2?",
+    choices:["11","5","6","4"],
+    correct:3,
+    rightTwist:"CORRECT. But the developer failed math, so the dungeon marks it WRONG and takes your HP. You lose 1 HP. The wall laughs. 😭",
+    wrongTwist:"WRONG — but also the developer failed math so the dungeon thinks this is right. You survive. The universe is broken.",
+    rightIsGood:false
+  },
+  {
+    chamber:"CHAMBER II — THE FIRE HALL",
+    title:"The Burning Question",
+    story:"A cauldron of fire blocks the corridor. A voice booms: 'Only the wise may pass.' The voice then trips over its own echo.",
+    question:"What do you use to put out fire?",
+    choices:["Gasoline","More fire","Water","Hopes & dreams"],
+    correct:2,
+    rightTwist:"CORRECT. You grab the water bucket... it was decorative. The bucket shatters. Water goes everywhere — including into your boots. -1 HP for soggy feet. 💧",
+    wrongTwist:"WRONG. You throw gasoline on the fire. The fire, impressed by your chaos energy, moves aside. You walk through. Somehow.",
+    rightIsGood:false
+  },
+  {
+    chamber:"CHAMBER III — THE THRONE ROOM",
+    title:"The King's Riddle",
+    story:"A skeleton king sits on a throne of bones. His crown is on backwards. He doesn't know. You don't tell him.",
+    question:"What is the most powerful piece in chess?",
+    choices:["King","The board","Queen","The guy who flips it"],
+    correct:2,
+    rightTwist:"CORRECT. The king nods. Then reveals he was playing checkers this whole time. Your chess knowledge is useless. You lose 1 HP from existential dread. ♟️",
+    wrongTwist:"WRONG. But 'the guy who flips it' is so relatable to the king that he lets you pass AND gives you a chocolate coin. You gain morale.",
+    rightIsGood:false
+  },
+  {
+    chamber:"CHAMBER IV — THE RIDDLE BRIDGE",
+    title:"Trust Issues",
+    story:"A troll blocks a crumbling bridge. 'One of us always lies,' it says. Then winks with both eyes simultaneously. That shouldn't be possible.",
+    question:"How many eyes did the troll just wink?",
+    choices:["One","Two","Zero, trolls can't wink","I didn't consent to this riddle"],
+    correct:1,
+    rightTwist:"CORRECT — two eyes. The troll is impressed, then immediately jealous. It pushes you off the bridge out of spite. -1 HP. 🌉",
+    wrongTwist:"WRONG. The troll respects that you challenged the premise. It carries you across the bridge. You did not ask for this.",
+    rightIsGood:false
+  },
+  {
+    chamber:"CHAMBER V — THE FINAL GATE",
+    title:"The Last Door",
+    story:"One door. The floor behind you collapses. Somewhere in the dark, something breathes. Your name is carved into the door already. This was always going to happen.",
+    question:"To escape, answer: What is the sound of one hand clapping?",
+    choices:["Silence","*clap*","My internal screaming","There is no sound. There is only dungeon."],
+    correct:3,
+    rightTwist:"CORRECT. The dungeon acknowledges your enlightenment... then reveals three more chambers behind the door. 'Did you really think it was over?' -1 HP from betrayal. 😈",
+    wrongTwist:"WRONG. But the dungeon is also confused. In the confusion, the door just... opens. Chaos finds a way.",
+    rightIsGood:false
+  }
+];
+
+// ══════════════════════════════════════════
+//  MAP  (1=wall, 0=floor, 2-6=question zones)
+// ══════════════════════════════════════════
+const MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1,1],
+  [1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,1,0,1,1,1,0,1,0,1,0,0,1],
+  [1,0,1,0,0,2,0,0,0,0,0,3,0,0,1,1],
+  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,0,1],
+  [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+  [1,1,0,1,1,0,0,1,0,0,1,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,0,4,0,1,1,1,0,5,0,1,0,1,1],
+  [1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1],
+  [1,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,6,0,0,1],
+  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+const ROWS=MAP.length, COLS=MAP[0].length;
+
+// question zone positions (zones 2-6)
+const ZONE_Q = {2:0, 3:1, 4:2, 5:3, 6:4};
+const answeredZones = new Set();
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let playerName = '';
+let hp = 3, maxHp = 3;
+let currentQIndex = -1;
+let gameRunning = false;
+let questionOpen = false;
+
+const player = { x:1.5, y:1.5, angle:0, speed:0 };
+const MOVE_SPEED = 0.05;
+const ROT_SPEED  = 0.04;
+const keys = {};
+
+// ══════════════════════════════════════════
+//  CANVAS SETUP
+// ══════════════════════════════════════════
+const canvas = document.getElementById('rayCanvas');
+const ctx    = canvas.getContext('2d');
+const mmCvs  = document.getElementById('minimap');
+const mmCtx  = mmCvs.getContext('2d');
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ══════════════════════════════════════════
+//  INTRO ANIMATION
+// ══════════════════════════════════════════
+function runIntro() {
+  const words = ['iw1','iw2','iw3','iw4'];
+  const delays = [300,900,1500,2100];
+  words.forEach((id,i) => {
+    const el = document.getElementById(id);
+    setTimeout(()=>{
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      el.style.opacity = '1';
+      el.style.transform = 'scale(1)';
+      setTimeout(()=>{
+        el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(1.3)';
+      }, 600);
+    }, delays[i]);
+  });
+  setTimeout(showNameScreen, 3200);
+}
+
+// ══════════════════════════════════════════
+//  NAME SCREEN
+// ══════════════════════════════════════════
+function showNameScreen() {
+  document.getElementById('intro').style.display = 'none';
+  const ns = document.getElementById('name-screen');
+  ns.style.display = 'flex';
+  document.getElementById('name-input').focus();
+}
+
+document.getElementById('name-submit').onclick = submitName;
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitName();
+});
+
+function submitName() {
+  const val = document.getElementById('name-input').value.trim();
+  playerName = val || 'PRISONER';
+  localStorage.setItem('dungeon_player_name', playerName);
+  startGame();
+}
+
+// ══════════════════════════════════════════
+//  GAME START
+// ══════════════════════════════════════════
+function startGame() {
+  document.getElementById('name-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display  = 'none';
+  document.getElementById('game-wrap').style.display   = 'block';
+
+  player.x = 1.5; player.y = 1.5; player.angle = 0;
+  hp = maxHp = 3;
+  answeredZones.clear();
+  questionOpen = false;
+  gameRunning = true;
+
+  document.getElementById('hud-name').textContent = '⚔ ' + playerName.toUpperCase();
+  updateHPDisplay();
+  gameLoop();
+}
+
+// ══════════════════════════════════════════
+//  HP DISPLAY
+// ══════════════════════════════════════════
+function updateHPDisplay() {
+  const d = document.getElementById('hp-display');
+  d.innerHTML = '';
+  for(let i=0;i<maxHp;i++){
+    const s = document.createElement('span');
+    s.className = 'heart' + (i < hp ? '' : ' empty');
+    s.textContent = '❤️';
+    d.appendChild(s);
+  }
+}
+
+function loseHP() {
+  if(hp <= 0) return;
+  hp--;
+  updateHPDisplay();
+  flashDamage();
+  if(hp <= 0) setTimeout(showDeath, 800);
+}
+
+function flashDamage() {
+  const f = document.getElementById('dmg-flash');
+  f.classList.add('hit');
+  setTimeout(()=>f.classList.remove('hit'), 300);
+}
+
+// ══════════════════════════════════════════
+//  RAYCASTING ENGINE
+// ══════════════════════════════════════════
+const FOV = Math.PI / 3;
+const NUM_RAYS = 320;
+const MAX_DEPTH = 16;
+
+// Wall colors by distance
+function wallColor(dist, side) {
+  const brightness = Math.max(0, 1 - dist / MAX_DEPTH);
+  const base = side === 1 ? 0.65 : 1.0;
+  const b = brightness * base;
+  const r = Math.floor(80  * b + 30);
+  const g = Math.floor(55  * b + 20);
+  const bv= Math.floor(40  * b + 15);
+  return `rgb(${r},${g},${bv})`;
+}
+
+function castRay(angle) {
+  const rayDirX = Math.cos(angle);
+  const rayDirY = Math.sin(angle);
+  let mapX = Math.floor(player.x);
+  let mapY = Math.floor(player.y);
+  const deltaX = Math.abs(1 / rayDirX);
+  const deltaY = Math.abs(1 / rayDirY);
+  let stepX, stepY, sideDistX, sideDistY;
+
+  if(rayDirX < 0){ stepX=-1; sideDistX=(player.x-mapX)*deltaX; }
+  else           { stepX= 1; sideDistX=(mapX+1-player.x)*deltaX; }
+  if(rayDirY < 0){ stepY=-1; sideDistY=(player.y-mapY)*deltaY; }
+  else           { stepY= 1; sideDistY=(mapY+1-player.y)*deltaY; }
+
+  let side=0, hit=false, dist=0;
+  for(let i=0;i<MAX_DEPTH*10&&!hit;i++){
+    if(sideDistX < sideDistY){ sideDistX+=deltaX; mapX+=stepX; side=0; }
+    else                      { sideDistY+=deltaY; mapY+=stepY; side=1; }
+    const cell = MAP[mapY]?.[mapX];
+    if(cell === undefined || cell >= 1) hit=true;
+  }
+  dist = side===0
+    ? (mapX - player.x + (1-stepX)/2) / rayDirX
+    : (mapY - player.y + (1-stepY)/2) / rayDirY;
+  return { dist: Math.abs(dist), side };
+}
+
+function drawScene() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#0a0804';
+  ctx.fillRect(0, 0, W, H/2);
+  ctx.fillStyle = '#050403';
+  ctx.fillRect(0, H/2, W, H/2);
+
+  const colW = W / NUM_RAYS;
+  for(let i=0;i<NUM_RAYS;i++){
+    const rayAngle = player.angle - FOV/2 + (i/NUM_RAYS)*FOV;
+    const { dist, side } = castRay(rayAngle);
+    const correctedDist = dist * Math.cos(rayAngle - player.angle);
+    const wallH = Math.min(H, H / correctedDist);
+    const top = (H - wallH) / 2;
+    ctx.fillStyle = wallColor(correctedDist, side);
+    ctx.fillRect(i * colW, top, colW + 1, wallH);
+  }
+}
+
+// ══════════════════════════════════════════
+//  MINIMAP
+// ══════════════════════════════════════════
+function drawMinimap() {
+  const S = 6;
+  mmCvs.width  = COLS * S;
+  mmCvs.height = ROWS * S;
+  mmCtx.clearRect(0,0,mmCvs.width,mmCvs.height);
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const cell = MAP[r][c];
+      if(cell>=1) mmCtx.fillStyle='#4a3a20';
+      else        mmCtx.fillStyle='#1a1208';
+      mmCtx.fillRect(c*S,r*S,S,S);
+      if(cell>=2){
+        mmCtx.fillStyle= answeredZones.has(cell) ? '#555' : '#C9A227';
+        mmCtx.fillRect(c*S+1,r*S+1,S-2,S-2);
+      }
+    }
+  }
+  // player dot
+  mmCtx.fillStyle='#ff4500';
+  mmCtx.beginPath();
+  mmCtx.arc(player.x*S, player.y*S, 3, 0, Math.PI*2);
+  mmCtx.fill();
+  // direction
+  mmCtx.strokeStyle='#ff4500';
+  mmCtx.lineWidth=1.5;
+  mmCtx.beginPath();
+  mmCtx.moveTo(player.x*S, player.y*S);
+  mmCtx.lineTo((player.x+Math.cos(player.angle)*1.5)*S, (player.y+Math.sin(player.angle)*1.5)*S);
+  mmCtx.stroke();
+}
+
+// ══════════════════════════════════════════
+//  MOVEMENT
+// ══════════════════════════════════════════
+window.addEventListener('keydown', e=>{ keys[e.code]=true; e.preventDefault(); });
+window.addEventListener('keyup',   e=>{ keys[e.code]=false; });
+
+function movePlayer() {
+  if(questionOpen) return;
+  let moved = false;
+  if(keys['ArrowLeft']  || keys['KeyA']){ player.angle -= ROT_SPEED; moved=true; }
+  if(keys['ArrowRight'] || keys['KeyD']){ player.angle += ROT_SPEED; moved=true; }
+
+  let dx=0, dy=0;
+  const spd = MOVE_SPEED;
+  if(keys['ArrowUp']   || keys['KeyW']){ dx+=Math.cos(player.angle)*spd; dy+=Math.sin(player.angle)*spd; moved=true; }
+  if(keys['ArrowDown'] || keys['KeyS']){ dx-=Math.cos(player.angle)*spd; dy-=Math.sin(player.angle)*spd; moved=true; }
+
+  const nx = player.x + dx;
+  const ny = player.y + dy;
+  const margin = 0.25;
+  if(MAP[Math.floor(ny)]?.[Math.floor(player.x)] === 0 || MAP[Math.floor(ny)]?.[Math.floor(player.x)] >= 2)
+    player.y = ny;
+  if(MAP[Math.floor(player.y)]?.[Math.floor(nx)] === 0 || MAP[Math.floor(player.y)]?.[Math.floor(nx)] >= 2)
+    player.x = nx;
+
+  // Check question zones
+  if(!questionOpen){
+    const cell = MAP[Math.floor(player.y)]?.[Math.floor(player.x)];
+    if(cell >= 2 && !answeredZones.has(cell)){
+      const qIdx = ZONE_Q[cell];
+      if(qIdx !== undefined) triggerQuestion(cell, qIdx);
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  QUESTION TRIGGER
+// ══════════════════════════════════════════
+function triggerQuestion(zone, qIdx) {
+  questionOpen = true;
+  currentQIndex = qIdx;
+  const q = QUESTIONS[qIdx];
+  document.getElementById('q-chamber').textContent  = q.chamber;
+  document.getElementById('q-title').textContent    = q.title;
+  document.getElementById('q-story').textContent    = q.story;
+  document.getElementById('q-question').textContent = q.question;
+  document.getElementById('q-result').textContent   = '';
+  document.getElementById('q-result').className     = 'q-result';
+  document.getElementById('q-continue').style.display = 'none';
+
+  const choicesDiv = document.getElementById('q-choices');
+  choicesDiv.innerHTML = '';
+  q.choices.forEach((c,i)=>{
+    const btn = document.createElement('button');
+    btn.className='q-btn';
+    btn.textContent = c;
+    btn.onclick = ()=>handleAnswer(i, zone, q);
+    choicesDiv.appendChild(btn);
+  });
+
+  document.getElementById('question-panel').style.display='flex';
+  answeredZones.add(zone);
+}
+
+function handleAnswer(index, zone, q) {
+  document.querySelectorAll('.q-btn').forEach(b=>b.disabled=true);
+  const isCorrect = index === q.correct;
+  document.querySelectorAll('.q-btn')[index].classList.add(isCorrect?'correct':'wrong');
+
+  const res = document.getElementById('q-result');
+  if(isCorrect){
+    res.textContent = q.rightTwist;
+    res.className = 'bad';
+    loseHP();
+  } else {
+    res.textContent = q.wrongTwist;
+    res.className = 'good';
+  }
+  document.getElementById('q-continue').style.display='block';
+
+  // Check if all questions done
+  if(answeredZones.size === Object.keys(ZONE_Q).length){
+    document.getElementById('q-continue').textContent = 'FACE YOUR FATE ▶';
+  }
+}
+
+document.getElementById('q-continue').onclick = closeQuestion;
+function closeQuestion() {
+  document.getElementById('question-panel').style.display='none';
+  questionOpen = false;
+  if(hp <= 0) return;
+  if(answeredZones.size === Object.keys(ZONE_Q).length){
+    setTimeout(showWin, 400);
+  }
+}
+
+// ══════════════════════════════════════════
+//  END SCREENS
+// ══════════════════════════════════════════
+function showDeath() {
+  gameRunning = false;
+  document.getElementById('game-wrap').style.display='none';
+  const es = document.getElementById('end-screen');
+  es.style.display='flex';
+  const t = document.getElementById('end-title');
+  t.textContent='YOU DIED';
+  t.className='death';
+  document.getElementById('end-msg').innerHTML =
+    `${playerName}, you answered correctly and the dungeon punished you for it.<br><br>
+    <em style="color:#666">You were too smart for your own good. The dungeon does not respect intelligence. It respects chaos.</em>`;
+}
+
+function showWin() {
+  gameRunning = false;
+  document.getElementById('game-wrap').style.display='none';
+  const es = document.getElementById('end-screen');
+  es.style.display='flex';
+  const t = document.getElementById('end-title');
+  t.textContent='YOU ESCAPED';
+  t.className='win';
+  document.getElementById('end-msg').innerHTML =
+    `Congratulations, ${playerName}.<br><br>
+    You answered every question. You walked every corridor.<br>
+    The gate opens. You step through...<br><br>
+    <em style="color:#ff4500">...into another dungeon. There is no outside. There was never an outside. Welcome home. 😈</em>`;
+  document.getElementById('end-restart').textContent = `AGAIN, ${playerName.toUpperCase()}? OKAY.`;
+}
+
+document.getElementById('end-restart').onclick = ()=>{
+  document.getElementById('end-screen').style.display='none';
+  showNameScreen();
+  // prefill name
+  const saved = localStorage.getItem('dungeon_player_name');
+  if(saved) document.getElementById('name-input').value = saved;
+};
+
+// ══════════════════════════════════════════
+//  GAME LOOP
+// ══════════════════════════════════════════
+function gameLoop() {
+  if(!gameRunning) return;
+  movePlayer();
+  drawScene();
+  drawMinimap();
+  requestAnimationFrame(gameLoop);
+}
+
+// ══════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════
+// Prefill saved name
+const savedName = localStorage.getItem('dungeon_player_name');
+if(savedName) document.getElementById('name-input').value = savedName;
+
+runIntro();
+</script>
+</body>
+</html>
